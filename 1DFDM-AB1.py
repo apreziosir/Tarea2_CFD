@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Diffusion equation in 1D
+Diffusion equation in 1D - Second order Adams Bashforth
 CFD - Pontificia Universidad Javeriana
 March 2018
 @author: Antonio Preziosi-Ribero
@@ -9,6 +9,7 @@ March 2018
 
 import numpy as np
 import Analyt as AN
+import Auxiliary as AUX
 import matplotlib.pyplot as plt
 from matplotlib import style
 
@@ -70,19 +71,13 @@ plt.close(1)
 # Entering the time loop
 # ==============================================================================
 
-plt.ion()
-plt.figure(1, figsize=(11, 8.5))
-style.use('ggplot')
-
 for t in range(1, npt + 1):
     
     # Generating analytical solution
     Ca = AN.difuana(M, L, Dx, x, xo, T0 + t * dT)
     
     # Explicit internal part
-    for i in range(1, N - 1):
-        
-        C1[i] = Sx * C[i - 1] + (1 - 2 * Sx) * C[i] + Sx * C[i + 1]
+    C1 = C + dT * AUX.FDev_sp(C, Dx, dx)
         
     # Imposing boundary conditions
     C1[0] = Ca[0]

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Diffusion equation in 1D
+Diffusion equation in 1D - Second order Adams Bashforth
 CFD - Pontificia Universidad Javeriana
 March 2018
 @author: Antonio Preziosi-Ribero
@@ -9,6 +9,7 @@ March 2018
 
 import numpy as np
 import Analyt as AN
+import Auxiliary as AUX
 import matplotlib.pyplot as plt
 from matplotlib import style
 
@@ -51,6 +52,7 @@ ert = np.zeros(int(npt))
 
 C = AN.difuana(M, L, Dx, x, xo, T0)
 C1 = np.zeros(N)
+C2 = np.zeros(N)
 Cmax = np.max(C)
 
 # Plotting initial condition
@@ -70,26 +72,43 @@ plt.close(1)
 # Entering the time loop
 # ==============================================================================
 
+# First time step
+Ca = AN.difuana(M, L, Dx, x, xo, T0 + dT)
+
+spa = AUX.FDev_sp(C, Dx, dx)
+
+C1 = C + dT * spa
+
+C1[0] = Ca[0]
+C1[N - 1] = Ca[N - 1]
+
+# Starting plot
 plt.ion()
 plt.figure(1, figsize=(11, 8.5))
 style.use('ggplot')
 
-for t in range(1, npt + 1):
+plt.subplot(1, 1, 1)
+plt.plot(x, C)
+plt.title('Initial condition 2')
+plt.xlabel(r'Distance $(m)$')
+plt.ylabel(r'Concentration $ \frac{kg}{m} $')
+plt.pause(3)
+plt.close(1)
+
+for t in range(2, npt + 1):
     
     # Generating analytical solution
     Ca = AN.difuana(M, L, Dx, x, xo, T0 + t * dT)
     
     # Explicit internal part
-    for i in range(1, N - 1):
-        
-        C1[i] = Sx * C[i - 1] + (1 - 2 * Sx) * C[i] + Sx * C[i + 1]
+    C2 = C1 + (dT / 2) * (3 * AUX.FDev_sp(C1, Dx, dx) - AUX.FDev_sp(C, Dx, dx))
         
     # Imposing boundary conditions
-    C1[0] = Ca[0]
-    C1[N - 1] = Ca[N - 1]
+    C2[0] = Ca[0]
+    C2[N - 1] = Ca[N - 1]
     
     # Estimating error
-    err = np.abs(C1 - Ca)
+    err = np.abs(C2 - Ca)
     ert[t] = np.linalg.norm(err)
     
     # Plotting numerical solution and comparison with analytical
@@ -126,5 +145,6 @@ for t in range(1, npt + 1):
     
     # Preparing for next timestep   
     C = C1
+    C1 = C2
     
     
