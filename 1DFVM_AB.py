@@ -30,7 +30,7 @@ Tf = 5.                                     # Final time
 # theta = 1 --> Fully implicit
 # ==============================================================================
 
-Sx = 0.2
+Sx = 0.1
 theta = 0.                                  # C-N ponderation factor
 N = 13                                      # Volumes in the domain
 L = XL - X0                                 # Domain length
@@ -57,6 +57,9 @@ C = AN.difuana(M, L, Dx, xn, xo, T0)
 C1 = np.zeros(N)
 Cmax = np.max(C)
 
+CL0 = C[0]
+CR0 = C[len(xn) - 1]
+
 # Plotting initial condition
 plt.ion()
 plt.figure(1, figsize=(11, 8.5))
@@ -67,8 +70,22 @@ plt.plot(xn, C)
 plt.title('Initial condition')
 plt.xlabel(r'Distance $(m)$')
 plt.ylabel(r'Concentration $ \frac{kg}{m} $')
-#plt.pause(3)
-#plt.close(1)
+plt.pause(3)
+plt.close(1)
+
+# =============================================================================
+# Solving first timestep with forward Euler
+# =============================================================================
+
+# Generating analytical solution
+Ca = AN.difuana(M, L, Dx, xn, xo, T0 + dT)
+    
+# Estimating solution C1 in t
+CL1 = Ca[0]
+CR1 = Ca[len(xn) - 1]
+spa = AUX.FVev_sp(C, Dx, dx, CL1, CR1)
+    
+C1 = C + dT * spa
 
 # =============================================================================
 # Starting time loop 
@@ -78,17 +95,15 @@ plt.ion()
 plt.figure(1, figsize=(11, 8.5))
 style.use('ggplot')
 
-for t in range(1, npt + 1):
+for t in range(2, npt + 1):
     
     # Generating analytical solution
     Ca = AN.difuana(M, L, Dx, xn, xo, T0 + t * dT)
     
     # Estimating solution C1 in t
-    CL = Ca[0]
-    CR = Ca[len(xn) - 1]
-    spa = AUX.FVev_sp(C, Dx, dx, CL, CR)
     
-    C1 = C + dT * spa
+    C2 = C + (dT / 2) * (3 * AUX.FVev_sp(C1, Dx, dx, CL1, CR1) - \
+    AUX.FVev_sp(C, Dx, dx, CL0, CR0))
     
     # Estimating error
     err = np.abs(C1 - Ca)
@@ -128,3 +143,4 @@ for t in range(1, npt + 1):
     
     # Preparing for next timestep   
     C = C1
+    C1 = C2
