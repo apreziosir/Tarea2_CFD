@@ -32,7 +32,7 @@ Tf = 5.                                     # Final time
 
 Sx = 0.2
 theta = 0.                                  # C-N ponderation factor
-N = 13                                      # Volumes in the domain
+N = 50                                      # Volumes in the domain
 L = XL - X0                                 # Domain length
 dx = L / N                                  # Calculating spacing           
 xn = np.zeros(N)                            # Node coordinates vector                            

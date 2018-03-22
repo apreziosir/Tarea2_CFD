@@ -30,7 +30,7 @@ Tf = 5.                                     # Final time
 # theta = 1 --> Fully implicit
 # ==============================================================================
 
-Sx = 0.1
+Sx = 0.05
 theta = 0.                                  # C-N ponderation factor
 N = 13                                      # Volumes in the domain
 L = XL - X0                                 # Domain length
@@ -100,10 +100,12 @@ for t in range(2, npt + 1):
     # Generating analytical solution
     Ca = AN.difuana(M, L, Dx, xn, xo, T0 + t * dT)
     
-    # Estimating solution C1 in t
+    # Estimating solution C2 in t
+    CL2 = Ca[0]
+    CR2 = Ca[len(xn) - 1] 
     
-    C2 = C + (dT / 2) * (3 * AUX.FVev_sp(C1, Dx, dx, CL1, CR1) - \
-    AUX.FVev_sp(C, Dx, dx, CL0, CR0))
+    C2 = C + (dT / 2) * (3 * AUX.FVev_sp(C1, Dx, dx, CL2, CR2) - \
+    AUX.FVev_sp(C, Dx, dx, CL1, CR1))
     
     # Estimating error
     err = np.abs(C1 - Ca)
@@ -144,3 +146,6 @@ for t in range(2, npt + 1):
     # Preparing for next timestep   
     C = C1
     C1 = C2
+    
+    CL1 = CL2
+    CR1 = CR2
