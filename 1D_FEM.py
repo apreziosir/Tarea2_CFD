@@ -10,6 +10,7 @@ Marzo de 2018
 
 import numpy as np
 import scipy.sparse as SP
+from scipy.sparse.linalg import inv
 import matplotlib.pyplot as plt
 from matplotlib import style
 
@@ -32,6 +33,10 @@ Tf = 5.                                     # Final time
 nn = 11                                 # Number of nodes (must be odd and >= 3)
 ne = int((nn - 1) / 2)                  # Number of elements calculated
 h = (XL - X0) / ne                      # cell size
+Sx = 0.3
+
+# Calculating timestep size for the Sx parameter. 
+dT = Sx * h / Dx
 
 # Set up mesh
 
@@ -57,9 +62,9 @@ RHS = np.zeros(nn)
 
 # Loop over elements to assemble diffusion matrix
 
-plt.ion()
-plt.figure(1, figsize=(11, 8.5))
-style.use('ggplot')
+#plt.ion()
+#plt.figure(1, figsize=(11, 8.5))
+#style.use('ggplot')
 
 for ielt in range(0, ne):
     
@@ -79,18 +84,18 @@ for ielt in range(0, ne):
             
             dLHS[I, J] = dLHS[I, J] + eLHS[i, j]
             
-            plt.clf()
-            plt.spy(dLHS)
-            plt.draw()
-            plt.pause(0.2)
+#            plt.clf()
+#            plt.spy(dLHS)
+#            plt.draw()
+#            plt.pause(0.2)
 
 # Loop over elements to assemble mass matrix
             
 mLHS = SP.lil_matrix((nn, nn))
 
-plt.ion()
-plt.figure(2, figsize=(11, 8.5))
-style.use('ggplot')
+#plt.ion()
+#plt.figure(2, figsize=(11, 8.5))
+#style.use('ggplot')
 
 for ielt in range(0, ne):
     
@@ -109,8 +114,27 @@ for ielt in range(0, ne):
             
             mLHS[I, J] = mLHS[I, J] + eLHS[i, j]
             
-            plt.clf()
-            plt.spy(mLHS)
-            plt.draw()
-            plt.pause(0.2)
+#            plt.clf()
+#            plt.spy(mLHS)
+#            plt.draw()
+#            plt.pause(0.2)
+#plt.clf(1)
+#plt.clf(2)
+
+
+# Inverting mass matrix (expensive part of the process)
+mLHS = inv(mLHS)
+
+
+#plt.figure(3, figsize=(11, 8.5))
+#style.use('ggplot')
+#plt.spy(mLHS)
+#plt.draw()
+
+LHSd = SP.eye(nn) + dT * mLHS * dLHS
+
+#plt.figure(3, figsize=(11, 8.5))
+#style.use('ggplot')
+#plt.spy(LHSd)
+#plt.draw()
 
