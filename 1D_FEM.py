@@ -99,7 +99,7 @@ mLHS = SP.lil_matrix((nn, nn))
 
 for ielt in range(0, ne):
     
-    # Creating element diffusion matrix, assuming element size h    
+    # Creating element mass matrix, assuming element size h    
     eLHS = (h / 15) * np.array([[2, 1, -1/2],[1, 8, 1], [-1/2, 1, 2]])
     
     # Assemble to global mLHS matrix
