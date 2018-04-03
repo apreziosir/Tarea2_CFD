@@ -7,6 +7,8 @@ CFD Pontificia Universidad Javeriana - March 2018
 """
 
 import numpy as np
+import scipy.sparse as SP
+from scipy.sparse.linalg import spsolve
 import Analyt as AN
 import Auxiliary as AUX
 import matplotlib.pyplot as plt
@@ -31,8 +33,8 @@ Tf = 5.                                     # Final time
 # ==============================================================================
 
 Sx = 0.2
-theta = 0.                                  # C-N ponderation factor
-N = 50                                      # Volumes in the domain
+theta = 0.5                                 # C-N ponderation factor
+N = 41                                      # Volumes in the domain
 L = XL - X0                                 # Domain length
 dx = L / N                                  # Calculating spacing           
 xn = np.zeros(N)                            # Node coordinates vector                            
@@ -48,6 +50,23 @@ npt = int(np.ceil((Tf - T0) / (dT)))        # Number of timesteps
 
 # Generating vector that stores error in time
 ert = np.zeros(int(npt))
+
+# ==============================================================================
+# Generating matrix for implicit solver
+# ==============================================================================
+
+K = SP.lil_matrix((N, N))
+
+K[0, 0] = 1 + 3 * Sx
+K[0, 1] = -Sx
+K[N - 1, N - 1]  = 1 + 3 * Sx
+K[N - 1, N - 2] = -Sx
+
+for i in range(1, N - 1):
+    
+    K[i, i] = 1 + 2 * Sx
+    K[i, i + 1] = -Sx
+    K[i, i - 1] = -Sx
 
 # ==============================================================================
 # Generating initial condition
@@ -67,8 +86,6 @@ plt.plot(xn, C)
 plt.title('Initial condition')
 plt.xlabel(r'Distance $(m)$')
 plt.ylabel(r'Concentration $ \frac{kg}{m} $')
-#plt.pause(3)
-#plt.close(1)
 
 # =============================================================================
 # Starting time loop 
@@ -90,15 +107,26 @@ for t in range(1, npt + 1):
     
     C1 = C + dT * spa
     
+    # Implicit part of the solution
+    # Imposing boundary conditions
+    C[0] = C[0] + AN.difuana(M, L, Dx, X0, xo, t) * Sx * 2
+    C[len(xn) - 1] = C[len(xn) - 1] + AN.difuana(M, L, Dx, XL, xo, t) * Sx * 2
+    
+    # Solving linear system
+    C1i = spsolve(K, C)
+    
+    # Crank-Nicholson ponderation
+    C1t = (1 - theta) * C1 + theta * C1i
+    
     # Estimating error
-    err = np.abs(C1 - Ca)
+    err = np.abs(C1t - Ca)
     ert[t] = np.linalg.norm(err)
     
     # Plotting numerical solution and comparison with analytical
     plt.clf()
     
     plt.subplot(2, 2, 1)
-    plt.plot(xn, C1, 'b')
+    plt.plot(xn, C1t, 'b')
     plt.xlim([X0, XL])
     plt.ylim([0, Cmax])
     plt.ylabel(r'Concentration $ \frac{kg}{m} $')
@@ -127,4 +155,4 @@ for t in range(1, npt + 1):
     plt.pause(0.2)
     
     # Preparing for next timestep   
-    C = C1
+    C = C1t

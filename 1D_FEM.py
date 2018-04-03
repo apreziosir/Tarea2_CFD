@@ -11,6 +11,7 @@ Marzo de 2018
 import numpy as np
 import scipy.sparse as SP
 from scipy.sparse.linalg import inv
+import Analyt as AN
 import matplotlib.pyplot as plt
 from matplotlib import style
 
@@ -30,13 +31,20 @@ Tf = 5.                                     # Final time
 # Numerical parameters
 # ==============================================================================
 
+L = XL - X0
 nn = 11                                 # Number of nodes (must be odd and >= 3)
 ne = int((nn - 1) / 2)                  # Number of elements calculated
 h = (XL - X0) / ne                      # cell size
 Sx = 0.3
 
+# Nodes coordinates
+xn = np.linspace(X0, XL, nn)
+
 # Calculating timestep size for the Sx parameter. 
-dT = Sx * h / Dx
+dT = Sx * (xn[1] - xn[0]) / Dx
+nT = int((Tf - T0) / dT)
+
+ert = np.zeros(int(nT))
 
 # Set up mesh
 
@@ -62,9 +70,9 @@ RHS = np.zeros(nn)
 
 # Loop over elements to assemble diffusion matrix
 
-#plt.ion()
-#plt.figure(1, figsize=(11, 8.5))
-#style.use('ggplot')
+plt.ion()
+plt.figure(1, figsize=(11, 8.5))
+style.use('ggplot')
 
 for ielt in range(0, ne):
     
@@ -84,18 +92,9 @@ for ielt in range(0, ne):
             
             dLHS[I, J] = dLHS[I, J] + eLHS[i, j]
             
-#            plt.clf()
-#            plt.spy(dLHS)
-#            plt.draw()
-#            plt.pause(0.2)
-
 # Loop over elements to assemble mass matrix
             
 mLHS = SP.lil_matrix((nn, nn))
-
-#plt.ion()
-#plt.figure(2, figsize=(11, 8.5))
-#style.use('ggplot')
 
 for ielt in range(0, ne):
     
@@ -114,27 +113,95 @@ for ielt in range(0, ne):
             
             mLHS[I, J] = mLHS[I, J] + eLHS[i, j]
             
-#            plt.clf()
-#            plt.spy(mLHS)
-#            plt.draw()
-#            plt.pause(0.2)
-#plt.clf(1)
-#plt.clf(2)
+
 
 
 # Inverting mass matrix (expensive part of the process)
 mLHS = inv(mLHS)
 
 
-#plt.figure(3, figsize=(11, 8.5))
-#style.use('ggplot')
-#plt.spy(mLHS)
-#plt.draw()
-
 LHSd = SP.eye(nn) + dT * mLHS * dLHS
+LHSd[0, :] = 0
+LHSd[0, 0] = 1
+LHSd[nn - 1, :] = 0
+LHSd[nn - 1, nn - 1] = 1
 
-#plt.figure(3, figsize=(11, 8.5))
-#style.use('ggplot')
+LHSd = inv(LHSd)
+
+# Generating initial condition
+C = AN.difuana(M, L, Dx, xn, xo, T0)
+
+C1 = np.zeros(nn)
+Cmax = np.max(C)
+
+# Plotting initial condition
+plt.ion()
+plt.figure(1, figsize=(11, 8.5))
+style.use('ggplot')
+
+plt.subplot(1, 1, 1)
+plt.plot(xn, C)
+plt.title('Initial condition')
+plt.xlabel(r'Distance $(m)$')
+plt.ylabel(r'Concentration $ \frac{kg}{m} $')
+   
+# Entering time loop 
+
+for t in range(1, nT):
+    
+    # Generating analytical solution
+    Ca = AN.difuana(M, L, Dx, xn, xo, T0 + t * dT)
+    
+    # Setting up right hand side
+    C[0] = Ca[0]
+    C[nn - 1] = Ca[nn - 1]
+    
+    # Solving system (matrix vector multiplication)
+    C1 = LHSd * C
+    
+    # Estimating error
+    err = np.abs(C1 - Ca)
+    ert[t] = np.linalg.norm(err)
+    
+    # Plotting numerical solution and comparison with analytical
+    plt.clf()
+    
+    plt.subplot(2, 2, 1)
+    plt.plot(xn, C1, 'b')
+    plt.xlim([X0, XL])
+    plt.ylim([0, Cmax])
+    plt.ylabel(r'Concentration $ \frac{kg}{m} $')
+    plt.title('Numerical solution')
+    
+    plt.subplot(2, 2, 2)
+    plt.plot(xn, Ca)
+    plt.xlim([X0, XL])
+    plt.ylim([0, Cmax])
+    plt.title('Analytical solution')
+    
+    plt.subplot(2, 2, 3)
+    plt.semilogy(xn, err)
+    plt.xlim([X0, XL])
+    plt.ylim([1e-8, 1e2])
+    plt.ylabel('Absolute error')
+    plt.title('Error')
+    
+    plt.subplot(2, 2, 4)
+    plt.semilogy(np.linspace(T0, Tf, nT), ert)
+    plt.xlim([T0 - 0.2, Tf + 0.2])
+    plt.ylim([1e-8, 1e2])
+    plt.title('Error evolution')
+    
+    plt.draw()
+    titulo = 'Finite element solution implicit'
+    plt.suptitle(titulo)
+    plt.pause(0.2)
+    
+    # Preparing for next timestep   
+    C = C1
+    
+    
+
 #plt.spy(LHSd)
 #plt.draw()
 

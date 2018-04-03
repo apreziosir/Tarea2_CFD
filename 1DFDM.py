@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Diffusion equation in 1D
+Diffusion equation in 1D - Crank-Nicholson method implemented
 CFD - Pontificia Universidad Javeriana
 March 2018
 @author: Antonio Preziosi-Ribero
 """
 
 import numpy as np
+import scipy.sparse as SP
+from scipy.sparse.linalg import spsolve
 import Analyt as AN
 import matplotlib.pyplot as plt
 from matplotlib import style
@@ -30,8 +32,8 @@ Tf = 5.                                     # Final time
 # theta = 1 --> Fully implicit
 # ==============================================================================
 
-Sx = 0.2
-theta = 0.                                  # C-N ponderation factor
+Sx = 0.3
+theta = 0.71                                # C-N ponderation factor
 N = 21                                      # Nodes in the domain
 L = XL - X0                                 # Domain length
 
@@ -44,6 +46,21 @@ npt = int(np.ceil((Tf - T0) / (dT)))        # Number of timesteps
 
 # Generating vector that stores error in time
 ert = np.zeros(int(npt))
+
+# ==============================================================================
+# Generate matrix for implicit version (Dirichlet boundary conditions)
+# ==============================================================================
+
+K = SP.lil_matrix((N, N))
+
+K[0, 0] = 1
+K[N - 1, N - 1]  = 1
+
+for i in range(1, N - 1):
+    
+    K[i, i] = 1 + 2 * Sx
+    K[i, i + 1] = -Sx
+    K[i, i - 1] = -Sx
 
 # ==============================================================================
 # Generating initial condition
@@ -88,15 +105,26 @@ for t in range(1, npt + 1):
     C1[0] = Ca[0]
     C1[N - 1] = Ca[N - 1]
     
+    # Implicit part of the solver
+    
+    #Imposing boundary conditions
+    C[0] = Ca[0]
+    C[N - 1] = Ca[N - 1]
+    
+    # Solving system of linear equations
+    C1i = spsolve(K, C)
+    
+    C1t = (1 - theta) * C1 + theta * C1i
+    
     # Estimating error
-    err = np.abs(C1 - Ca)
+    err = np.abs(C1t - Ca)
     ert[t] = np.linalg.norm(err)
     
     # Plotting numerical solution and comparison with analytical
     plt.clf()
     
     plt.subplot(2, 2, 1)
-    plt.plot(x, C1, 'b')
+    plt.plot(x, C1t, 'b')
     plt.xlim([X0, XL])
     plt.ylim([0, Cmax])
     plt.ylabel(r'Concentration $ \frac{kg}{m} $')
@@ -122,9 +150,12 @@ for t in range(1, npt + 1):
     plt.title('Error evolution')
     
     plt.draw()
+    titulo = str(theta)
+    titulo = 'Finite differences CN factor = ' + titulo
+    plt.suptitle(titulo)
     plt.pause(0.2)
     
     # Preparing for next timestep   
-    C = C1
+    C = C1t
     
     
