@@ -10,6 +10,7 @@ Marzo de 2018
 
 import numpy as np
 import scipy.sparse as SP
+from scipy.sparse.linalg import spsolve
 from scipy.sparse.linalg import inv
 import Analyt as AN
 import matplotlib.pyplot as plt
@@ -32,7 +33,7 @@ Tf = 5.                                     # Final time
 # ==============================================================================
 
 L = XL - X0
-nn = 11                                 # Number of nodes (must be odd and >= 3)
+nn = 21                                 # Number of nodes (must be odd and >= 3)
 ne = int((nn - 1) / 2)                  # Number of elements calculated
 h = (XL - X0) / ne                      # cell size
 Sx = 0.3
@@ -76,9 +77,11 @@ style.use('ggplot')
 
 for ielt in range(0, ne):
     
-    # Creating element diffusion matrix, assuming element size h    
-    eLHS = ((Dx * h) / 3) * np.array([[7/4, -2, 1/4],[-2, 4, -2], [1/4, \
-           -2, 7/4]])
+    # Creating element diffusion matrix, assuming element size h (from Gresho)   
+    eLHS = (1 / (3 * h)) * np.array([[7, -8, 1], [-8, 16, -8], [1, -8, 7]])
+    
+    # Creating element diffusion matrix, assuming element size h (my result)
+    # eLHS = (h / 3) * np.array([[7/4, -2, 1/4], [-2, 4, -2], [1/4, -2, 7/4]])
     
     # Assemble to global LHS matrix
     # Loop over values in element matrix (i,j) and assemble to global
@@ -92,6 +95,10 @@ for ielt in range(0, ne):
             
             dLHS[I, J] = dLHS[I, J] + eLHS[i, j]
             
+# ==============================================================================
+# Mass matrix proposition... not working for now
+# ==============================================================================
+
 # Loop over elements to assemble mass matrix
             
 mLHS = SP.lil_matrix((nn, nn))
@@ -99,7 +106,7 @@ mLHS = SP.lil_matrix((nn, nn))
 for ielt in range(0, ne):
     
     # Creating element mass matrix, assuming element size h    
-    eLHS = (h / 15) * np.array([[2, 1, -1/2],[1, 8, 1], [-1/2, 1, 2]])
+    eLHS = (h / 30) * np.array([[4, 2, -1],[2, 16, 2], [-1, 2, 4]])
     
     # Assemble to global mLHS matrix
     # Loop over values in element matrix (i,j) and assemble to global
@@ -118,15 +125,21 @@ for ielt in range(0, ne):
 
 # Inverting mass matrix (expensive part of the process)
 mLHS = inv(mLHS)
+# ==============================================================================
+            
+LHSd = SP.eye(nn) + dT * Dx * dLHS #* mLHS 
 
-
-LHSd = SP.eye(nn) + dT * mLHS * dLHS
 LHSd[0, :] = 0
 LHSd[0, 0] = 1
 LHSd[nn - 1, :] = 0
 LHSd[nn - 1, nn - 1] = 1
 
-LHSd = inv(LHSd)
+LHSd = SP.csr_matrix.tocsr(LHSd)
+
+plt.spy(LHSd)
+plt.draw()
+plt.pause(2)
+plt.clf()
 
 # Generating initial condition
 C = AN.difuana(M, L, Dx, xn, xo, T0)
@@ -144,6 +157,8 @@ plt.plot(xn, C)
 plt.title('Initial condition')
 plt.xlabel(r'Distance $(m)$')
 plt.ylabel(r'Concentration $ \frac{kg}{m} $')
+plt.draw()
+plt.pause(1.5)
    
 # Entering time loop 
 
@@ -153,11 +168,14 @@ for t in range(1, nT):
     Ca = AN.difuana(M, L, Dx, xn, xo, T0 + t * dT)
     
     # Setting up right hand side
-    C[0] = Ca[0]
-    C[nn - 1] = Ca[nn - 1]
+    RHS = SP.csr_matrix.tocsr(C)
+    RHS[0] = AN.difuana(M, L, Dx, X0, xo, T0 + t * dT)
+    RHS[nn - 1] = AN.difuana(M, L, Dx, XL, xo, T0 + t * dT)
     
     # Solving system (matrix vector multiplication)
-    C1 = LHSd * C
+    C1 = spsolve(LHSd, RHS)
+    
+    print(np.max(C1))
     
     # Estimating error
     err = np.abs(C1 - Ca)

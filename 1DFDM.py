@@ -33,7 +33,7 @@ Tf = 5.                                     # Final time
 # ==============================================================================
 
 Sx = 0.3
-theta = 0.71                                # C-N ponderation factor
+theta = 0.50                                # C-N ponderation factor
 N = 21                                      # Nodes in the domain
 L = XL - X0                                 # Domain length
 

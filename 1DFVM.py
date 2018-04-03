@@ -32,9 +32,9 @@ Tf = 5.                                     # Final time
 # theta = 1 --> Fully implicit
 # ==============================================================================
 
-Sx = 0.2
-theta = 0.5                                 # C-N ponderation factor
-N = 41                                      # Volumes in the domain
+Sx = 0.3
+theta = 0.5                                # C-N ponderation factor
+N = 21                                      # Volumes in the domain
 L = XL - X0                                 # Domain length
 dx = L / N                                  # Calculating spacing           
 xn = np.zeros(N)                            # Node coordinates vector                            
@@ -101,16 +101,17 @@ for t in range(1, npt + 1):
     Ca = AN.difuana(M, L, Dx, xn, xo, T0 + t * dT)
     
     # Estimating solution C1 in t
-    CL = Ca[0]
-    CR = Ca[len(xn) - 1]
+    CL = AN.difuana(M, L, Dx, X0, xo, T0 + (t - 1) * dT)
+    CR = AN.difuana(M, L, Dx, XL, xo, T0 + (t - 1) * dT)
     spa = AUX.FVev_sp(C, Dx, dx, CL, CR)
     
     C1 = C + dT * spa
     
     # Implicit part of the solution
     # Imposing boundary conditions
-    C[0] = C[0] + AN.difuana(M, L, Dx, X0, xo, t) * Sx * 2
-    C[len(xn) - 1] = C[len(xn) - 1] + AN.difuana(M, L, Dx, XL, xo, t) * Sx * 2
+    C[0] = C[0] + AN.difuana(M, L, Dx, X0, xo, T0 + t * dT) * Sx * 2
+    C[len(xn) - 1] = C[len(xn) - 1] + AN.difuana(M, L, Dx, XL, xo, T0 + t * dT)\
+    * Sx * 2
     
     # Solving linear system
     C1i = spsolve(K, C)
