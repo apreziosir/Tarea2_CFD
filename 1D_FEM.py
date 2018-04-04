@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 1D unsteady diffusion solved by Finite Element Method (FEM), with 3 nodes 
-elements and forward Euler in time.
+elements and backward Euler in time.
 @author: Antonio Preziosi-Ribero
 CFD- Pontificia Universidad Javeriana
 Marzo de 2018
@@ -36,17 +36,17 @@ L = XL - X0
 nn = 21                                 # Number of nodes (must be odd and >= 3)
 ne = int((nn - 1) / 2)                  # Number of elements calculated
 h = (XL - X0) / ne                      # cell size
-Sx = 0.3
+Sx = 0.01
 
 # Nodes coordinates
 xn = np.linspace(X0, XL, nn)
 
 # Calculating timestep size for the Sx parameter. 
-dT = Sx * (xn[1] - xn[0]) / Dx
+dT = Sx * (xn[2] - xn[0]) / Dx
 nT = int((Tf - T0) / dT)
 
 ert = np.zeros(int(nT))
-
+1001
 # Set up mesh
 
 # Nodes coordinates
@@ -60,6 +60,7 @@ nconn = np.zeros((ne, 3))
 nconn[:, 0] = n0
 nconn[:, 1] = n1
 nconn[:, 2] = n2
+del(n0, n1, n2)
 
 # ==============================================================================
 # Building matrix and RHS for solving
@@ -80,9 +81,6 @@ for ielt in range(0, ne):
     # Creating element diffusion matrix, assuming element size h (from Gresho)   
     eLHS = (1 / (3 * h)) * np.array([[7, -8, 1], [-8, 16, -8], [1, -8, 7]])
     
-    # Creating element diffusion matrix, assuming element size h (my result)
-    # eLHS = (h / 3) * np.array([[7/4, -2, 1/4], [-2, 4, -2], [1/4, -2, 7/4]])
-    
     # Assemble to global LHS matrix
     # Loop over values in element matrix (i,j) and assemble to global
     # locations (I,J)
@@ -96,7 +94,7 @@ for ielt in range(0, ne):
             dLHS[I, J] = dLHS[I, J] + eLHS[i, j]
             
 # ==============================================================================
-# Mass matrix proposition... not working for now
+# Mass matrix proposition
 # ==============================================================================
 
 # Loop over elements to assemble mass matrix
@@ -119,27 +117,17 @@ for ielt in range(0, ne):
             J = nconn[ielt, j]
             
             mLHS[I, J] = mLHS[I, J] + eLHS[i, j]
-            
 
+# Left hand side of the system (this does not vary in time)            
+LHSd = dT * Dx * dLHS + mLHS 
 
-
-# Inverting mass matrix (expensive part of the process)
-mLHS = inv(mLHS)
-# ==============================================================================
-            
-LHSd = SP.eye(nn) + dT * Dx * dLHS #* mLHS 
-
+# Imposing boundary conditions in the matrix 
 LHSd[0, :] = 0
 LHSd[0, 0] = 1
 LHSd[nn - 1, :] = 0
 LHSd[nn - 1, nn - 1] = 1
 
 LHSd = SP.csr_matrix.tocsr(LHSd)
-
-plt.spy(LHSd)
-plt.draw()
-plt.pause(2)
-plt.clf()
 
 # Generating initial condition
 C = AN.difuana(M, L, Dx, xn, xo, T0)
@@ -168,14 +156,12 @@ for t in range(1, nT):
     Ca = AN.difuana(M, L, Dx, xn, xo, T0 + t * dT)
     
     # Setting up right hand side
-    RHS = SP.csr_matrix.tocsr(C)
+    RHS = mLHS * C
     RHS[0] = AN.difuana(M, L, Dx, X0, xo, T0 + t * dT)
     RHS[nn - 1] = AN.difuana(M, L, Dx, XL, xo, T0 + t * dT)
     
     # Solving system (matrix vector multiplication)
     C1 = spsolve(LHSd, RHS)
-    
-    print(np.max(C1))
     
     # Estimating error
     err = np.abs(C1 - Ca)
@@ -217,9 +203,3 @@ for t in range(1, nT):
     
     # Preparing for next timestep   
     C = C1
-    
-    
-
-#plt.spy(LHSd)
-#plt.draw()
-
