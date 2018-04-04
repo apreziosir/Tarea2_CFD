@@ -46,7 +46,7 @@ def FEM1D(Sx, nn):
     dT = Sx * (xn[2] - xn[0]) / Dx
     nT = int((Tf - T0) / dT)
     
-    ert = np.zeros(int(nT))
+    ert = np.zeros(int(nT) + 1)
 
     # Set up mesh    
     # Nodes coordinates

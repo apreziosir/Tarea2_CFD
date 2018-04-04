@@ -11,14 +11,14 @@ import scipy.sparse as SP
 from scipy.sparse.linalg import spsolve
 import Analyt as AN
 import Auxiliary as AUX
-#import matplotlib.pyplot as plt
-#from matplotlib import style
+import matplotlib.pyplot as plt
+from matplotlib import style
 
 def FVM1D(Sx, N):
 
-# ==============================================================================
-# Variable declaration
-# ==============================================================================
+    # ==============================================================================
+    # Variable declaration
+    # ==============================================================================
     
     X0 = 0.                                     # Initial x coordinate
     XL = 5.                                     # Final x coordinate 
@@ -28,15 +28,15 @@ def FVM1D(Sx, N):
     T0 = 1.                                     # Initial time
     Tf = 5.                                     # Final time
     
-# ==============================================================================
-# Numerical parameters
-# theta = 0 --> Fully explicit
-# theta = 1 --> Fully implicit
-# ==============================================================================
+    # ==============================================================================
+    # Numerical parameters
+    # theta = 0 --> Fully explicit
+    # theta = 1 --> Fully implicit
+    # ==============================================================================
     
-#    Sx = 0.2
-    theta = 0.5                                 # C-N ponderation factor
-#    N = 41                                      # Volumes in the domain
+#    Sx = 0.3
+    theta = 0.5                                # C-N ponderation factor
+#     N = 41                                      # Volumes in the domain
     L = XL - X0                                 # Domain length
     dx = L / N                                  # Calculating spacing           
     xn = np.zeros(N)                            # Node coordinates vector                            
@@ -51,11 +51,11 @@ def FVM1D(Sx, N):
     npt = int(np.ceil((Tf - T0) / (dT)))        # Number of timesteps
     
     # Generating vector that stores error in time
-    ert = np.zeros(int(npt))
+    ert = np.zeros(int(npt) + 1)
     
-# ==============================================================================
-# Generating matrix for implicit solver
-# ==============================================================================
+    # ==============================================================================
+    # Generating matrix for implicit solver
+    # ==============================================================================
     
     K = SP.lil_matrix((N, N))
     
@@ -70,9 +70,9 @@ def FVM1D(Sx, N):
         K[i, i + 1] = -Sx
         K[i, i - 1] = -Sx
     
-# ==============================================================================
-# Generating initial condition
-# ==============================================================================
+    # ==============================================================================
+    # Generating initial condition
+    # ==============================================================================
     
     C = AN.difuana(M, L, Dx, xn, xo, T0)
     C1 = np.zeros(N)
@@ -89,9 +89,9 @@ def FVM1D(Sx, N):
 #    plt.xlabel(r'Distance $(m)$')
 #    plt.ylabel(r'Concentration $ \frac{kg}{m} $')
     
-# =============================================================================
-# Starting time loop 
-# =============================================================================
+    # =============================================================================
+    # Starting time loop 
+    # =============================================================================
     
 #    plt.ion()
 #    plt.figure(1, figsize=(11, 8.5))
@@ -103,17 +103,17 @@ def FVM1D(Sx, N):
         Ca = AN.difuana(M, L, Dx, xn, xo, T0 + t * dT)
         
         # Estimating solution C1 in t
-        CL = AN.difuana(M, L, Dx, X0, xo, T0 + t * dT)
-        CR = AN.difuana(M, L, Dx, XL, xo, T0 + t * dT)
+        CL = AN.difuana(M, L, Dx, X0, xo, T0 + (t - 1) * dT)
+        CR = AN.difuana(M, L, Dx, XL, xo, T0 + (t - 1) * dT)
         spa = AUX.FVev_sp(C, Dx, dx, CL, CR)
         
         C1 = C + dT * spa
         
         # Implicit part of the solution
         # Imposing boundary conditions
-        C[0] = C[0] + AN.difuana(M, L, Dx, X0, xo, t) * Sx * 2
-        C[len(xn) - 1] = C[len(xn) - 1] + AN.difuana(M, L, Dx, XL, xo, t) * Sx \
-        * 2
+        C[0] = C[0] + AN.difuana(M, L, Dx, X0, xo, T0 + t * dT) * Sx * 2
+        C[len(xn) - 1] = C[len(xn) - 1] + AN.difuana(M, L, Dx, XL, xo, T0 + t * dT)\
+        * Sx * 2
         
         # Solving linear system
         C1i = spsolve(K, C)

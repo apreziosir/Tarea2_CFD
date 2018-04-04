@@ -48,7 +48,7 @@ def FDM1D(Sx, N):
     npt = int(np.ceil((Tf - T0) / (dT)))        # Number of timesteps
     
     # Generating vector that stores error in time
-    ert = np.zeros(int(npt))
+    ert = np.zeros(int(npt) + 1)
     
 # ==============================================================================
 # Generate matrix for implicit version (Dirichlet boundary conditions)

@@ -36,7 +36,7 @@ L = XL - X0
 nn = 21                                 # Number of nodes (must be odd and >= 3)
 ne = int((nn - 1) / 2)                  # Number of elements calculated
 h = (XL - X0) / ne                      # cell size
-Sx = 0.01
+Sx = 0.1
 
 # Nodes coordinates
 xn = np.linspace(X0, XL, nn)
@@ -46,9 +46,8 @@ dT = Sx * (xn[2] - xn[0]) / Dx
 nT = int((Tf - T0) / dT)
 
 ert = np.zeros(int(nT))
-1001
-# Set up mesh
 
+# Set up mesh
 # Nodes coordinates
 xn = np.linspace(X0, XL, nn)
 
